@@ -1,20 +1,4 @@
-plugins {
-    id("java")
-}
-
-group = "com.hector.ticketing"
-version = "1.0-SNAPSHOT"
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    testImplementation(platform("org.junit:junit-bom:6.0.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.test {
-    useJUnitPlatform()
+allprojects {
+    group = "com.hector.ticketing"
+    version = "0.0.1-SNAPSHOT"
 }
