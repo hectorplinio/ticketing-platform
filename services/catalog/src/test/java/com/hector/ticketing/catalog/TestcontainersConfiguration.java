@@ -14,5 +14,4 @@ class TestcontainersConfiguration {
     KafkaContainer kafkaContainer() {
         return new KafkaContainer(DockerImageName.parse("apache/kafka-native:latest"));
     }
-
 }
