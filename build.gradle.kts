@@ -1,6 +1,7 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
+
 plugins {
-    base
-    id("com.diffplug.spotless") version "8.8.0"
+    id("com.diffplug.spotless") version "8.8.0" apply false
 }
 
 allprojects {
@@ -8,16 +9,17 @@ allprojects {
     version = "0.0.1-SNAPSHOT"
 }
 
-repositories {
-    mavenCentral()
-}
+subprojects {
+    plugins.withId("java") {
+        apply(plugin = "com.diffplug.spotless")
 
-spotless {
-    java {
-        target("services/**/src/**/*.java")
-        palantirJavaFormat()
-        removeUnusedImports()
-        formatAnnotations()
-        endWithNewline()
+        configure<SpotlessExtension> {
+            java {
+                palantirJavaFormat()
+                removeUnusedImports()
+                formatAnnotations()
+                endWithNewline()
+            }
+        }
     }
 }
