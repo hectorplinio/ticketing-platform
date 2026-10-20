@@ -3,3 +3,16 @@ spring:
     name: catalog
 server:
   port: 8081
+management:
+  server:
+    port: 9081
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db,kafka
