@@ -39,6 +39,7 @@ Gradle settings (`gradle.properties`): configuration cache, parallel and build c
 ```
 ticketing-platform/
 ├── CLAUDE.md
+├── README.md                    # public overview: architecture, stack, how to run, roadmap
 ├── settings.gradle.kts          # includes services:gateway, catalog, reservation, payment, notification
 ├── build.gradle.kts             # group/version + Spotless for all Java subprojects
 ├── gradle.properties
@@ -55,7 +56,7 @@ ticketing-platform/
 ├── .github/
 │   ├── workflows/ci.yml         # spotlessCheck + ./gradlew build on push to main and on PRs
 │   └── dependabot.yml           # weekly, gradle deps grouped + github-actions
-└── (planned) build-logic/, libs/event-contracts/, deploy/helm/, README.md
+└── (planned) build-logic/, libs/event-contracts/, deploy/helm/
 ```
 
 Each service has its own `build.gradle.kts` but **no** `settings.gradle.kts`, `gradlew` or
@@ -222,7 +223,7 @@ reformat-on-save, Docker Desktop, Homebrew, mise.
 | Phase | Deliverable                                                                                                                      | Status         |
 |-------|----------------------------------------------------------------------------------------------------------------------------------|----------------|
 | 0     | Gradle monorepo skeleton, docker-compose, Spotless, CI, Dependabot, branch protection                                            | ✅ Done        |
-| 0.5   | Health probes PR (mgmt ports, gateway `/health/*` routes, SecurityConfig)                                                        | 🔄 In progress |
+| 0.5   | Health probes PR (mgmt ports, gateway `/health/*` routes, SecurityConfig)                                                        | ✅ Done        |
 | 1     | catalog + reservation domain: seat holds, TTL expiry, concurrency (unique constraint + optimistic locking), Testcontainers tests | Next           |
 | 2     | Gateway business routes + Keycloak JWT + Redis rate limiting                                                                     | Planned        |
 | 3     | payment + full saga with Outbox, idempotent consumers, DLQ                                                                       | Planned        |
@@ -239,7 +240,6 @@ yields a solid portfolio project.
   `apache/kafka-native:latest`). Pin them and align with docker-compose (`postgres:17`, pin Kafka too).
   Add `permissions: contents: read` to `ci.yml`. Fix `### Proyect ###` typo and missing final
   newline in `.gitignore`.
-- `docs/readme`: README with architecture diagram, stack, how to run locally, roadmap.
 - `build/convention-plugins`: move repeated config (Spring Boot plugin versions, toolchain,
   repositories, `group`/`version`, test setup) from each service's `build.gradle.kts` into
   `build-logic/` convention plugins. `group`/`version` are currently duplicated in root and services.
