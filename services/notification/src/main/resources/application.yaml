@@ -3,3 +3,16 @@ spring:
     name: notification
 server:
   port: 8084
+management:
+  server:
+    port: 9084
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,kafka
