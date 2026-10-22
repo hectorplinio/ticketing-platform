@@ -1,6 +1,7 @@
 rootProject.name = "ticketing-platform"
 
 include(
+    "libs:platform-commons",
     "services:gateway",
     "services:catalog",
     "services:reservation",

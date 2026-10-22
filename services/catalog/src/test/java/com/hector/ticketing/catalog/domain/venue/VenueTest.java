@@ -3,7 +3,7 @@ package com.hector.ticketing.catalog.domain.venue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.hector.ticketing.catalog.domain.shared.DomainValidationException;
+import com.hector.ticketing.commons.domain.DomainValidationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;

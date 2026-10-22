@@ -19,6 +19,7 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":libs:platform-commons"))
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-kafka")
     implementation("org.springframework.boot:spring-boot-starter-mail")

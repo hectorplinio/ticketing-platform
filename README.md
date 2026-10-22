@@ -280,11 +280,13 @@ Keycloak is planned for phase 2.
 ```
 ticketing-platform/
 ├── build.gradle.kts           # shared config: group/version, Spotless for all services
-├── settings.gradle.kts        # declares the five service modules
+├── settings.gradle.kts        # declares the shared library and the five service modules
 ├── gradle/wrapper/            # Gradle wrapper (the only one in the repo)
 ├── infra/
 │   ├── docker-compose.yml     # Kafka, Postgres, Redis, Mailpit
 │   └── postgres/init.sql      # creates one database per service
+├── libs/
+│   └── platform-commons/      # shared technical code, auto-configured in each service
 ├── services/
 │   ├── gateway/               # config/ and filter/ only (no domain)
 │   ├── catalog/

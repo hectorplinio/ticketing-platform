@@ -1,6 +1,6 @@
 package com.hector.ticketing.catalog.domain.venue;
 
-import com.hector.ticketing.catalog.domain.shared.NotFoundException;
+import com.hector.ticketing.commons.domain.NotFoundException;
 import java.util.UUID;
 
 public class VenueNotFoundException extends NotFoundException {

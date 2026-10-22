@@ -1,6 +1,6 @@
 package com.hector.ticketing.catalog.domain.venue;
 
-import com.hector.ticketing.catalog.domain.shared.DomainValidationException;
+import com.hector.ticketing.commons.domain.DomainValidationException;
 import java.util.UUID;
 
 public class Venue {

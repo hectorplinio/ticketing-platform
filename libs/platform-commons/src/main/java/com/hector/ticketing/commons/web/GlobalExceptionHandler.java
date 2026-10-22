@@ -1,7 +1,7 @@
-package com.hector.ticketing.catalog.infrastructure.input.rest;
+package com.hector.ticketing.commons.web;
 
-import com.hector.ticketing.catalog.domain.shared.DomainValidationException;
-import com.hector.ticketing.catalog.domain.shared.NotFoundException;
+import com.hector.ticketing.commons.domain.DomainValidationException;
+import com.hector.ticketing.commons.domain.NotFoundException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
