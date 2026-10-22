@@ -2,6 +2,8 @@
 // JPA base entity and the Kafka health indicator. Never business/domain code of a service.
 plugins {
     `java-library`
+    // testFixtures: test code other modules reuse in their tests (ArchUnit rules), never shipped in the jar
+    `java-test-fixtures`
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -32,6 +34,8 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-starter-data-jpa")
     compileOnly("org.springframework.boot:spring-boot-starter-kafka")
     compileOnly("org.springframework.boot:spring-boot-starter-webmvc")
+
+    testFixturesApi("com.tngtech.archunit:archunit-junit5:1.5.1")
 
     testImplementation("org.springframework.boot:spring-boot-starter-actuator")
     testImplementation("org.springframework.boot:spring-boot-starter-kafka")
