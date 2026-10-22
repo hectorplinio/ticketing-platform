@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
@@ -24,5 +25,17 @@ public class ErrorHandlingAutoConfiguration {
     @ConditionalOnMissingBean(ResponseEntityExceptionHandler.class)
     GlobalExceptionHandler globalExceptionHandler() {
         return new GlobalExceptionHandler();
+    }
+
+    // Nested class so the condition is evaluated before DataIntegrityExceptionHandler is loaded:
+    // services without spring-tx (no database) never touch it.
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "org.springframework.dao.DataIntegrityViolationException")
+    static class DataIntegrityConfiguration {
+
+        @Bean
+        DataIntegrityExceptionHandler dataIntegrityExceptionHandler() {
+            return new DataIntegrityExceptionHandler();
+        }
     }
 }

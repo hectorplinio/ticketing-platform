@@ -41,6 +41,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-kafka")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // DataIntegrityViolationException, to test the 409 handler
+    testImplementation("org.springframework:spring-tx")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

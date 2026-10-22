@@ -22,6 +22,9 @@ extra["springCloudVersion"] = "2025.1.3"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // traceId/spanId in every log line and W3C trace context propagation. No exporter yet (phase 5).
+    implementation("org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry")
+    runtimeOnly("io.micrometer:micrometer-tracing-bridge-otel")
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
     implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")

@@ -21,6 +21,9 @@ repositories {
 dependencies {
     implementation(project(":libs:platform-commons"))
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // traceId/spanId in every log line and W3C trace context propagation. No exporter yet (phase 5).
+    implementation("org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry")
+    runtimeOnly("io.micrometer:micrometer-tracing-bridge-otel")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.springframework.boot:spring-boot-starter-kafka")
