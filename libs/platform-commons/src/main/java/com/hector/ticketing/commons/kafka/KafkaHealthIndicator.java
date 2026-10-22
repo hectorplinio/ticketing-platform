@@ -1,4 +1,4 @@
-package com.hector.ticketing.catalog.infrastructure.output.kafka;
+package com.hector.ticketing.commons.kafka;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -12,13 +12,11 @@ import org.apache.kafka.clients.admin.DescribeClusterOptions;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.kafka.core.KafkaAdmin;
-import org.springframework.stereotype.Component;
 
 /**
  * Spring Boot has no built-in Kafka health indicator. Contributes as "kafka"; the timeout
  * stays below the gateway's 2 s response timeout so a broker outage reports DOWN instead of 504.
  */
-@Component
 class KafkaHealthIndicator implements HealthIndicator, AutoCloseable {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(1);

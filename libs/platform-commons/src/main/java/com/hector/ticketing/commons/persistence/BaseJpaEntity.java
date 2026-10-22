@@ -1,4 +1,4 @@
-package com.hector.ticketing.catalog.infrastructure.output.persistence;
+package com.hector.ticketing.commons.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;

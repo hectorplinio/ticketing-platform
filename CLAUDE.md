@@ -40,13 +40,15 @@ Gradle settings (`gradle.properties`): configuration cache, parallel and build c
 ticketing-platform/
 ├── CLAUDE.md
 ├── README.md                    # public overview: architecture, stack, how to run, roadmap
-├── settings.gradle.kts          # includes services:gateway, catalog, reservation, payment, notification
+├── settings.gradle.kts          # includes libs:platform-commons and services:gateway, catalog, reservation, payment, notification
 ├── build.gradle.kts             # group/version + Spotless for all Java subprojects
 ├── gradle.properties
 ├── gradle/wrapper/              # the ONLY wrapper in the repo
 ├── infra/
 │   ├── docker-compose.yml       # kafka, postgres, redis, mailpit
 │   └── postgres/init.sql        # creates catalog, reservation, payment DBs (runs only on empty volume)
+├── libs/
+│   └── platform-commons/        # shared technical code + Spring Boot auto-configuration (see below)
 ├── services/
 │   ├── gateway/
 │   ├── catalog/
@@ -79,6 +81,8 @@ Dependencies per service:
 - catalog, reservation, payment: webmvc, data-jpa, flyway (+ flyway-database-postgresql), postgresql, validation, kafka,
   actuator, Testcontainers (kafka + postgresql).
 - notification: webmvc, kafka, mail, actuator, Testcontainers (kafka). Has webmvc only so Actuator can serve probes.
+- catalog, reservation, payment and notification also depend on `libs:platform-commons`. The gateway does not
+  (reactive, no domain).
 - gateway: spring-cloud-starter-gateway-server-webflux (reactive), oauth2-resource-server, actuator.
 
 Each business service's tests use a `TestcontainersConfiguration` (`@TestConfiguration` with
@@ -123,7 +127,7 @@ Applies to catalog, reservation, payment and notification. Base package:
 com.hector.ticketing.<service>/
 ├── domain/
 │   ├── <aggregate>/       # entities, value objects, domain events, repository INTERFACES (output ports)
-│   └── shared/            # DomainEvent, EventPublisher interface, base exceptions
+│   └── shared/            # DomainEvent, EventPublisher interface (base exceptions live in platform-commons)
 ├── application/
 │   └── <aggregate>/       # use cases as concrete classes, e.g. HoldSeats, ConfirmReservation
 └── infrastructure/
@@ -132,7 +136,7 @@ com.hector.ticketing.<service>/
     │   └── kafka/         # consumers
     ├── output/
     │   ├── persistence/   # JPA entities + adapters implementing domain repository interfaces
-    │   ├── kafka/         # outbox + publisher, KafkaHealthIndicator
+    │   ├── kafka/         # outbox + publisher
     │   └── <client>/      # REST clients to other services
     └── config/            # Spring beans wiring
 ```
@@ -140,6 +144,7 @@ com.hector.ticketing.<service>/
 Rules:
 
 - `domain` is **pure Java**: no Spring, no JPA annotations, no imports from `application` or `infrastructure`.
+  The only allowed external import is `com.hector.ticketing.commons.domain` (pure Java base exceptions).
 - `application` may depend on `domain` only. No framework types in use case signatures.
 - Use cases are **concrete classes**, no input-port interface with a single implementation.
 - Domain services (logic spanning several entities) go in `domain`, never use cases.
@@ -152,6 +157,32 @@ Gateway is **not** hexagonal (it has no domain). It only has `config/` and `filt
 
 ---
 
+## Shared module: `libs/platform-commons`
+
+Technical building blocks that would otherwise be copied into every business service. Base package
+`com.hector.ticketing.commons`:
+
+| Package | Contents | Registered by |
+|---|---|---|
+| `domain` | `DomainValidationException` (→ 400), `NotFoundException` (abstract, → 404). Pure Java. | — (plain classes) |
+| `persistence` | `BaseJpaEntity` | — (services extend it) |
+| `web` | `GlobalExceptionHandler` (package-private) | `ErrorHandlingAutoConfiguration`: servlet apps only, backs off if the service defines its own `ResponseEntityExceptionHandler` |
+| `kafka` | `KafkaHealthIndicator` (package-private) | `KafkaHealthAutoConfiguration`: only when a `KafkaAdmin` bean exists; bean name `kafkaHealthIndicator` → contributor `kafka` |
+
+Rules:
+
+- **Only technical code, never business/domain code of a service.** Sharing a domain model would
+  couple the services' releases.
+- Beans are contributed through **Spring Boot auto-configuration**
+  (`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`), so a service
+  gets them just by depending on the module: no `@Import`, no component scan of other packages.
+  Each auto-configuration is guarded by `@Conditional*` so it only activates when the service has
+  the matching technology (e.g. notification has no JPA).
+- Spring starters are `compileOnly`: the module never adds dependencies to a service.
+- Auto-configurations are tested with `ApplicationContextRunner` (conditions only, no containers).
+
+---
+
 ## Aggregate template (reference: `Venue` in catalog)
 
 Every new aggregate follows the same files and decisions as `Venue`. The owner models the next
@@ -160,14 +191,14 @@ aggregates (Event, Seat...) themselves, using Venue as the reference.
 | Layer | Files | Decisions |
 |---|---|---|
 | `domain/<agg>/` | `Venue`, `VenueRepository`, `VenueNotFoundException` | Entity is a `class` (not record): `final UUID id`, mutable fields, constructor that validates (rebuild from DB), `static create(...)` that generates the UUID, behaviour methods (`update`) that validate **everything before assigning**. Max lengths as `public static final` constants. Port uses only domain + JDK types; `save` covers insert and update; `findById` returns `Optional`. |
-| `domain/shared/` | `DomainValidationException` (→ 400), `NotFoundException` (abstract, → 404) | Domain never throws `IllegalArgumentException` for business rules. |
-| `infrastructure/output/persistence/` | `BaseJpaEntity` | `@MappedSuperclass`: `id` (assigned, no `@GeneratedValue`), `created_at` (`@CreationTimestamp`, `updatable = false`), `updated_at` (`@UpdateTimestamp`). `Instant` ↔ `timestamptz`. Implements `Persistable` so inserts skip the extra SELECT. `equals`/`hashCode` by id, proxy-safe. |
+| `platform-commons` `domain` | `DomainValidationException` (→ 400), `NotFoundException` (abstract, → 404) | Domain never throws `IllegalArgumentException` for business rules. |
+| `platform-commons` `persistence` | `BaseJpaEntity` | `@MappedSuperclass`: `id` (assigned, no `@GeneratedValue`), `created_at` (`@CreationTimestamp`, `updatable = false`), `updated_at` (`@UpdateTimestamp`). `Instant` ↔ `timestamptz`. Implements `Persistable` so inserts skip the extra SELECT. `equals`/`hashCode` by id, proxy-safe. |
 | `infrastructure/output/persistence/<agg>/` | `VenueJpaEntity`, `VenueJpaRepository` (package-private), `VenuePersistenceAdapter` | Entity extends `BaseJpaEntity`, declares only its own columns, no validation, `@Column(length = Venue.X_MAX_LENGTH)`. Adapter `save` loads the existing entity and calls `update(...)` (keeps `created_at`), else persists a new one. |
 | `resources/db/migration/` | `V<n>__<description>.sql` | Hand-written. Always includes `id uuid`, `created_at`/`updated_at timestamptz NOT NULL DEFAULT now()`. Named constraints (`pk_<table>`, `ck_<table>_<rule>`). Lengths and CHECKs mirror the domain rules. Never edit a merged migration: add a new version. `ddl-auto: validate` fails startup on any mismatch. |
 | `application/<agg>/` | `CreateVenue`, `GetVenue`, `ListVenues`, `UpdateVenue`, `DeleteVenue`, `*Command` records | Plain Java, no Spring annotations, method `execute(...)`. Not-found → aggregate's `NotFoundException`. |
 | `infrastructure/config/` | `VenueUseCaseConfig` | `@Bean` per use case, so `application` stays framework-free. |
 | `infrastructure/input/rest/<agg>/` | `VenueController`, `VenueRequest`, `VenueResponse` | Package-private. Request record with Bean Validation (wrapper types like `Integer` so missing fields are 400) reusing the domain length constants; response record with `static from(domain)`. `POST` → `201` + `Location`, `DELETE` → `204`. |
-| `infrastructure/input/rest/` | `GlobalExceptionHandler` | RFC 9457 `ProblemDetail`; validation errors add an `errors` map (field → message). |
+| `platform-commons` `web` | `GlobalExceptionHandler` (auto-configured) | RFC 9457 `ProblemDetail`; validation errors add an `errors` map (field → message). |
 | tests | `domain/<agg>/VenueTest`, `infrastructure/input/rest/<agg>/VenueControllerTest` | Domain: pure JUnit + AssertJ, no Spring. API: `@SpringBootTest` + `@AutoConfigureMockMvc` + `MockMvcTester` + `TestcontainersConfiguration`, end to end against real Postgres. |
 
 Known trade-offs: an update runs two SELECTs (use case `findById` + adapter `save`) because use
@@ -188,12 +219,12 @@ where concurrent writes matter); `GET` list has no pagination yet.
   `management.endpoint.health.group.readiness.include` is `readinessState,db,kafka` in catalog,
   reservation and payment, and `readinessState,kafka` in notification (no DB). Contributor
   names are case-sensitive and validated at startup — an unknown name fails the context.
-- Spring Boot has **no built-in Kafka health indicator**. Each business service has a
-  `KafkaHealthIndicator` in `infrastructure/output/kafka/` (contributor name `kafka`): `describeCluster`
-  via `AdminClient` with a 1 s timeout, below the gateway's 2 s response timeout. It implements no
-  domain port (Actuator calls it, not the domain); it lives in `output/kafka/` to sit next to the
-  Kafka adapter it checks. Its name must stay `KafkaHealthIndicator`: Boot derives the contributor
-  name from the bean name. Duplicated per service until a shared module exists.
+- Spring Boot has **no built-in Kafka health indicator**. `KafkaHealthIndicator` lives in
+  `libs/platform-commons` (`commons.kafka`) and is auto-configured in every service that has a
+  `KafkaAdmin` (contributor name `kafka`): `describeCluster` via `AdminClient` with a 1 s timeout,
+  below the gateway's 2 s response timeout. It implements no domain port (Actuator calls it, not the
+  domain). The bean method must stay `kafkaHealthIndicator`: Boot derives the contributor name from
+  the bean name.
 - Externally, health is reachable **only** through gateway routes, one per service:
   `/health/gateway`, `/health/catalog`, `/health/reservation`, `/health/payment`, `/health/notification`.
   Each route: `SetPath=/actuator/health/readiness` (readiness checks DB/Kafka, and its response has

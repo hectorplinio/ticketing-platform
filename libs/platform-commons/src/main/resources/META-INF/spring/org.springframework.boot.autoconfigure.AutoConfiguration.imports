@@ -1,0 +1,2 @@
+com.hector.ticketing.commons.kafka.KafkaHealthAutoConfiguration
+com.hector.ticketing.commons.web.ErrorHandlingAutoConfiguration

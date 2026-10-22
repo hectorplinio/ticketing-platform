@@ -1,7 +1,7 @@
 package com.hector.ticketing.catalog.infrastructure.output.persistence.venue;
 
 import com.hector.ticketing.catalog.domain.venue.Venue;
-import com.hector.ticketing.catalog.infrastructure.output.persistence.BaseJpaEntity;
+import com.hector.ticketing.commons.persistence.BaseJpaEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
