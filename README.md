@@ -130,9 +130,9 @@ so business routes can never expose `/actuator/*` by accident.
 | Messaging     | Apache Kafka (KRaft mode, no ZooKeeper)                               |
 | Data          | PostgreSQL 17 + Flyway migrations, Redis 7                            |
 | Email (local) | Mailpit                                                               |
-| Testing       | JUnit 5, Testcontainers (real Kafka and Postgres in Docker)           |
+| Testing       | JUnit 5, Testcontainers (real Kafka and Postgres in Docker), ArchUnit |
 | CI            | GitHub Actions, Dependabot                                            |
-| Planned       | Keycloak (OIDC), OpenTelemetry + Grafana, Kubernetes + Helm, ArchUnit |
+| Planned       | Keycloak (OIDC), OpenTelemetry + Grafana, Kubernetes + Helm           |
 
 ## Getting started
 
@@ -321,6 +321,10 @@ JPA and Kafka live only in `infrastructure`.
 
 Tests run against **real infrastructure** (Kafka and Postgres in Docker via Testcontainers)
 instead of mocks or in-memory databases, so Docker must be running.
+
+Architecture rules are tests too: each business service has an `ArchitectureTest` (ArchUnit) that
+fails the build if, for example, the domain imports Spring or a controller talks to the database
+directly. The rules are defined once in `libs/platform-commons` and shared by every service.
 
 ## Development workflow
 

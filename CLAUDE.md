@@ -25,7 +25,7 @@ Repo: https://github.com/hectorplinio/ticketing-platform
 | Cache / rate limit | Redis 7                                                                                                                                |
 | Identity           | Keycloak (OIDC) — planned, not yet integrated                                                                                          |
 | Email (local)      | Mailpit (SMTP 1025, UI 8025)                                                                                                           |
-| Tests              | JUnit 5, Testcontainers (real Kafka/Postgres), ArchUnit (planned)                                                                      |
+| Tests              | JUnit 5, Testcontainers (real Kafka/Postgres), ArchUnit 1.5.1                                                                          |
 | Observability      | OpenTelemetry + Grafana + Tempo — planned                                                                                              |
 | Deploy             | Kubernetes (kind/OrbStack locally), Helm charts, Strimzi (Kafka), CloudNativePG — planned                                              |
 | CI                 | GitHub Actions                                                                                                                         |
@@ -151,7 +151,14 @@ Rules:
 - JPA entities are separate from domain entities; adapters map between them.
 - Aggregate subpackages are created **when the aggregate is modeled**, not up front.
 - Prefer Java `record` for value objects, commands and DTOs. **No Lombok.**
-- Planned: ArchUnit tests enforcing these rules in every service.
+- **Enforced by ArchUnit**: rules live once in `HexagonalArchitectureRules` (platform-commons
+  `testFixtures`, package `commons.architecture`); each business service has an `ArchitectureTest`
+  (`@AnalyzeClasses` on its base package, production classes only) that includes them. A violation
+  fails `./gradlew build` with the broken rule and the reason. Rules: domain depends only on `java..`
+  and domain packages; application only on domain/application; `infrastructure.input` never uses
+  `infrastructure.output`; `@Entity` only in `output.persistence`; `@RestController` only in
+  `input.rest`; no field injection. Every rule uses `allowEmptyShould(true)` so services without
+  code yet still pass. New rules go in `HexagonalArchitectureRules`, never in a single service.
 
 Gateway is **not** hexagonal (it has no domain). It only has `config/` and `filter/` packages.
 
@@ -180,6 +187,8 @@ Rules:
   the matching technology (e.g. notification has no JPA).
 - Spring starters are `compileOnly`: the module never adds dependencies to a service.
 - Auto-configurations are tested with `ApplicationContextRunner` (conditions only, no containers).
+- `testFixtures` holds test code reused by the services' tests (ArchUnit rules). It is not part of
+  the module's jar; services consume it with `testImplementation(testFixtures(project(":libs:platform-commons")))`.
 
 ---
 
