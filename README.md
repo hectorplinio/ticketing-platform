@@ -54,7 +54,8 @@ the same time, exactly one must win, without double-selling and without blocking
 | Local infrastructure     | ✅ docker-compose with Kafka, Postgres, Redis and Mailpit                |
 | Health checks            | ✅ `/health/<service>` through the gateway, aware of DB and Kafka        |
 | Gateway security         | ✅ Health is public, everything else requires authentication            |
-| Business domain and APIs | ⏳ Not yet — catalog and reservation are next                           |
+| Catalog: venues          | ✅ CRUD API, end to end with Postgres and Flyway                        |
+| Rest of the domain       | ⏳ Events, seats, reservations and payments are next                    |
 | Keycloak (JWT), rate limiting, Kubernetes, observability | ⏳ Planned                              |
 
 ## Architecture
@@ -171,17 +172,27 @@ Each service runs in its own terminal:
 
 ```bash
 ./gradlew :services:gateway:bootRun
+./gradlew :services:catalog:bootRun
 
-./gradlew :services:catalog:bootTestRun
 ./gradlew :services:reservation:bootTestRun
 ./gradlew :services:payment:bootTestRun
 ./gradlew :services:notification:bootTestRun
 ```
 
-> **Why `bootTestRun` for business services?** They don't have a datasource configured yet, so
-> `bootTestRun` starts them with their own Kafka and Postgres containers (Testcontainers),
-> the same ones the tests use. Once their configuration points to the docker-compose
-> infrastructure, `bootRun` will work too.
+`bootRun` uses the docker-compose infrastructure from step 2; Flyway applies the database
+migrations automatically on startup.
+
+> **Why `bootTestRun` for reservation, payment and notification?** They don't have their
+> connection settings yet, so `bootTestRun` starts them with their own Kafka and Postgres
+> containers (Testcontainers), the same ones the tests use. They will move to `bootRun` as
+> they are configured, like catalog.
+
+### Configuration
+
+Every setting has a default for local development, so nothing needs to be configured to run
+locally. To override a value (e.g. point catalog to another database), see
+[`.env.example`](.env.example): it lists every environment variable and explains how to load
+it, since Spring Boot does not read `.env` files by itself.
 
 ### 4. Check that everything is up
 
@@ -220,8 +231,44 @@ management port directly: `/actuator/health/liveness` and `/actuator/health/read
 
 ### Business API
 
-Not available yet. Endpoints for events, seats and reservations will be documented here as
-they are built (phase 1).
+Until JWT validation is in place, business endpoints are called on the service directly
+(e.g. `localhost:8081` for catalog), not through the gateway.
+
+#### Venues (catalog)
+
+A venue is the physical place where events take place.
+
+| Request                    | Body           | Response                                  |
+|----------------------------|----------------|-------------------------------------------|
+| `POST /venues`             | `VenueRequest` | `201` + `Location` header + venue         |
+| `GET /venues`              | —              | `200` + list of venues                    |
+| `GET /venues/{id}`         | —              | `200` + venue, or `404`                   |
+| `PUT /venues/{id}`         | `VenueRequest` | `200` + updated venue, or `404`           |
+| `DELETE /venues/{id}`      | —              | `204`, or `404`                           |
+
+```bash
+curl -i -X POST http://localhost:8081/venues \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "WiZink Center", "address": "Av. Felipe II, Madrid", "capacity": 15000}'
+```
+
+`VenueRequest`: `name` (required, max 150 chars), `address` (required, max 300 chars),
+`capacity` (required, greater than 0).
+
+#### Errors
+
+Errors follow [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457)
+(`application/problem+json`). Validation errors include an `errors` map per field:
+
+```json
+{
+  "status": 400,
+  "title": "Invalid request",
+  "detail": "Invalid request content.",
+  "instance": "/venues",
+  "errors": { "name": "must not be blank", "capacity": "must not be null" }
+}
+```
 
 ### Authentication
 
