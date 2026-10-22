@@ -42,6 +42,6 @@ bin/
 ### Mac OS ###
 .DS_Store
 
-### Proyect ###
+### Project ###
 .idea/
 .env

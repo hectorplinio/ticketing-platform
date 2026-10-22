@@ -54,7 +54,7 @@ ticketing-platform/
 │   ├── payment/
 │   └── notification/
 ├── .github/
-│   ├── workflows/ci.yml         # spotlessCheck + ./gradlew build on push to main and on PRs
+│   ├── workflows/ci.yml         # spotlessCheck + ./gradlew build on push to master and on PRs
 │   └── dependabot.yml           # weekly, gradle deps grouped + github-actions
 └── (planned) build-logic/, libs/event-contracts/, deploy/helm/
 ```
@@ -83,7 +83,10 @@ Dependencies per service:
 
 Each business service's tests use a `TestcontainersConfiguration` (`@TestConfiguration` with
 `@ServiceConnection` beans) imported by `*ApplicationTests`, plus a `Test*Application` main for
-running locally with containers.
+running locally with containers. Images are pinned to the docker-compose versions
+(`postgres:17`, Kafka `4.3.1`; tests use the `apache/kafka-native` image) with a 3-minute startup
+timeout, because in CI all services start their containers in parallel on a small runner. Never use
+`:latest`.
 
 ---
 
@@ -260,10 +263,6 @@ yields a solid portfolio project.
 
 ## Known follow-ups (small PRs)
 
-- `chore/pin-versions`: Testcontainers images use `:latest` (`postgres:latest`,
-  `apache/kafka-native:latest`). Pin them and align with docker-compose (`postgres:17`, pin Kafka too).
-  Add `permissions: contents: read` to `ci.yml`. Fix `### Proyect ###` typo and missing final
-  newline in `.gitignore`.
 - `build/convention-plugins`: move repeated config (Spring Boot plugin versions, toolchain,
   repositories, `group`/`version`, test setup) from each service's `build.gradle.kts` into
   `build-logic/` convention plugins. `group`/`version` are currently duplicated in root and services.
