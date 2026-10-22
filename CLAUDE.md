@@ -26,7 +26,7 @@ Repo: https://github.com/hectorplinio/ticketing-platform
 | Identity           | Keycloak (OIDC) — planned, not yet integrated                                                                                          |
 | Email (local)      | Mailpit (SMTP 1025, UI 8025)                                                                                                           |
 | Tests              | JUnit 5, Testcontainers (real Kafka/Postgres), ArchUnit 1.5.1                                                                          |
-| Observability      | OpenTelemetry + Grafana + Tempo — planned                                                                                              |
+| Observability      | Micrometer Tracing + OpenTelemetry bridge (traceId in logs, no exporter yet); Grafana + Tempo — planned                                |
 | Deploy             | Kubernetes (kind/OrbStack locally), Helm charts, Strimzi (Kafka), CloudNativePG — planned                                              |
 | CI                 | GitHub Actions                                                                                                                         |
 
@@ -173,7 +173,7 @@ Technical building blocks that would otherwise be copied into every business ser
 |---|---|---|
 | `domain` | `DomainValidationException` (→ 400), `NotFoundException` (abstract, → 404). Pure Java. | — (plain classes) |
 | `persistence` | `BaseJpaEntity` | — (services extend it) |
-| `web` | `GlobalExceptionHandler` (package-private) | `ErrorHandlingAutoConfiguration`: servlet apps only, backs off if the service defines its own `ResponseEntityExceptionHandler` |
+| `web` | `GlobalExceptionHandler`, `DataIntegrityExceptionHandler` (package-private) | `ErrorHandlingAutoConfiguration`: servlet apps only, backs off if the service defines its own `ResponseEntityExceptionHandler`; the data handler only when spring-tx is present |
 | `kafka` | `KafkaHealthIndicator` (package-private) | `KafkaHealthAutoConfiguration`: only when a `KafkaAdmin` bean exists; bean name `kafkaHealthIndicator` → contributor `kafka` |
 
 Rules:
@@ -213,6 +213,38 @@ aggregates (Event, Seat...) themselves, using Venue as the reference.
 Known trade-offs: an update runs two SELECTs (use case `findById` + adapter `save`) because use
 cases are not transactional; no optimistic locking yet (`@Version` will come with reservation,
 where concurrent writes matter); `GET` list has no pagination yet.
+
+---
+
+## Error handling and logging (decided)
+
+All business services get this from `platform-commons`; nothing to write per service.
+
+| Exception | Status | Title | Logged as |
+|---|---|---|---|
+| `NotFoundException` (domain) | 404 | Resource not found | WARN, one line |
+| `DomainValidationException` (domain) | 400 | Invalid request | WARN, one line |
+| Bean Validation (`@Valid`) | 400 | Invalid request + `errors` map | WARN, one line |
+| Spring MVC errors (malformed JSON, bad UUID, 405...) | 4xx | from the base class | WARN, one line |
+| `DataIntegrityViolationException` (FK, unique, CHECK) | 409 | Conflict | WARN, one line |
+| anything else | 500 | Internal server error | **ERROR with stack trace** |
+
+- 4xx are client mistakes, not system failures: never ERROR, so alerts only fire for real problems.
+- Responses never expose internals: the 409 and 500 bodies are generic; the database message and
+  the stack trace go only to the log.
+- `DataIntegrityExceptionHandler` is a separate advice because `DataIntegrityViolationException`
+  lives in spring-tx, absent in notification. It implements `Ordered` (highest precedence): Spring
+  asks advices in order and the first with a matching handler wins, so otherwise the catch-all
+  `Exception` handler would turn every 409 into a 500.
+- Logging is SLF4J + Logback (Boot default). Classes log with
+  `private static final Logger log = LoggerFactory.getLogger(X.class);`. No custom logger.
+- **Tracing:** every service (gateway included) has `spring-boot-micrometer-tracing-opentelemetry` +
+  `micrometer-tracing-bridge-otel`. Each request gets a `traceId`/`spanId` that Boot adds to every
+  log line, and the W3C `traceparent` header is propagated to downstream calls (and reused when it
+  arrives). No exporter until phase 5 (an OTLP exporter without a collector would log connection errors).
+- **Structured logs:** text by default (readable locally). Set `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs`
+  to log one JSON object per line (Elastic Common Schema) with `traceId`/`spanId` as fields; this is
+  what Kubernetes will use. Configured by env var, not by profile, so no yaml changes per service.
 
 ---
 

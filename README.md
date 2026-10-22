@@ -270,6 +270,28 @@ Errors follow [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457)
 }
 ```
 
+| Status | When |
+|---|---|
+| `400` | Invalid body, path or domain rule |
+| `404` | The resource does not exist |
+| `409` | The change conflicts with stored data (e.g. a foreign key) |
+| `500` | Unexpected error. The body is generic; details only go to the logs |
+
+### Logs and tracing
+
+Every request gets a trace id, added to each log line and propagated with the W3C `traceparent`
+header, so one request can be followed across services:
+
+```
+WARN ... [catalog] [nio-8081-exec-1] [b527357413402edc2a2b48b5cc8b815c-7b04b935510b7c06] ... Client error 404 on uri=/venues/...
+```
+
+Logs are plain text by default. For JSON (one object per line, ready for Loki/Elastic):
+
+```bash
+LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs ./gradlew :services:catalog:bootRun
+```
+
 ### Authentication
 
 Any route other than `/health/**` currently returns `401 Unauthorized`. JWT validation with
