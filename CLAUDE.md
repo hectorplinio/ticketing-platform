@@ -149,6 +149,30 @@ Gateway is **not** hexagonal (it has no domain). It only has `config/` and `filt
 
 ---
 
+## Aggregate template (reference: `Venue` in catalog)
+
+Every new aggregate follows the same files and decisions as `Venue`. The owner models the next
+aggregates (Event, Seat...) themselves, using Venue as the reference.
+
+| Layer | Files | Decisions |
+|---|---|---|
+| `domain/<agg>/` | `Venue`, `VenueRepository`, `VenueNotFoundException` | Entity is a `class` (not record): `final UUID id`, mutable fields, constructor that validates (rebuild from DB), `static create(...)` that generates the UUID, behaviour methods (`update`) that validate **everything before assigning**. Max lengths as `public static final` constants. Port uses only domain + JDK types; `save` covers insert and update; `findById` returns `Optional`. |
+| `domain/shared/` | `DomainValidationException` (→ 400), `NotFoundException` (abstract, → 404) | Domain never throws `IllegalArgumentException` for business rules. |
+| `infrastructure/output/persistence/` | `BaseJpaEntity` | `@MappedSuperclass`: `id` (assigned, no `@GeneratedValue`), `created_at` (`@CreationTimestamp`, `updatable = false`), `updated_at` (`@UpdateTimestamp`). `Instant` ↔ `timestamptz`. Implements `Persistable` so inserts skip the extra SELECT. `equals`/`hashCode` by id, proxy-safe. |
+| `infrastructure/output/persistence/<agg>/` | `VenueJpaEntity`, `VenueJpaRepository` (package-private), `VenuePersistenceAdapter` | Entity extends `BaseJpaEntity`, declares only its own columns, no validation, `@Column(length = Venue.X_MAX_LENGTH)`. Adapter `save` loads the existing entity and calls `update(...)` (keeps `created_at`), else persists a new one. |
+| `resources/db/migration/` | `V<n>__<description>.sql` | Hand-written. Always includes `id uuid`, `created_at`/`updated_at timestamptz NOT NULL DEFAULT now()`. Named constraints (`pk_<table>`, `ck_<table>_<rule>`). Lengths and CHECKs mirror the domain rules. Never edit a merged migration: add a new version. `ddl-auto: validate` fails startup on any mismatch. |
+| `application/<agg>/` | `CreateVenue`, `GetVenue`, `ListVenues`, `UpdateVenue`, `DeleteVenue`, `*Command` records | Plain Java, no Spring annotations, method `execute(...)`. Not-found → aggregate's `NotFoundException`. |
+| `infrastructure/config/` | `VenueUseCaseConfig` | `@Bean` per use case, so `application` stays framework-free. |
+| `infrastructure/input/rest/<agg>/` | `VenueController`, `VenueRequest`, `VenueResponse` | Package-private. Request record with Bean Validation (wrapper types like `Integer` so missing fields are 400) reusing the domain length constants; response record with `static from(domain)`. `POST` → `201` + `Location`, `DELETE` → `204`. |
+| `infrastructure/input/rest/` | `GlobalExceptionHandler` | RFC 9457 `ProblemDetail`; validation errors add an `errors` map (field → message). |
+| tests | `domain/<agg>/VenueTest`, `infrastructure/input/rest/<agg>/VenueControllerTest` | Domain: pure JUnit + AssertJ, no Spring. API: `@SpringBootTest` + `@AutoConfigureMockMvc` + `MockMvcTester` + `TestcontainersConfiguration`, end to end against real Postgres. |
+
+Known trade-offs: an update runs two SELECTs (use case `findById` + adapter `save`) because use
+cases are not transactional; no optimistic locking yet (`@Version` will come with reservation,
+where concurrent writes matter); `GET` list has no pagination yet.
+
+---
+
 ## Health checks (decided)
 
 - Every service uses **Spring Boot Actuator**; no custom health endpoint.
