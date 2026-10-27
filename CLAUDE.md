@@ -306,8 +306,14 @@ reformat-on-save, Docker Desktop, Homebrew, mise.
 
 ## Git and GitHub workflow
 
-- `main` is protected by ruleset `protect-main`: PR required (0 approvals), status check `build`
-  must pass, branch up to date, linear history, no force push, no deletion, no bypass.
+- The default branch is **`master`** (the git remote is named `main`, so `main/master` is the
+  remote-tracking branch). CI's `push: [master]` trigger is the post-merge build.
+- `master` is protected by ruleset `protect-main` (targets the default branch): PR required (0 approvals),
+  status check `build` must pass, branch up to date, linear history, no force push, no deletion, no bypass.
+- **Never push to `master`, never commit on it**: every change goes through a feature branch and a PR.
+- Claude Code project hooks (`.claude/settings.json`, scripts in `.claude/hooks/`): block `git push`
+  to `master`, block edits to Flyway migrations already on `master`, and format edited Java files
+  with Spotless.
 - Squash merge only; head branches auto-deleted.
 - Branch names: `feat/...`, `fix/...`, `chore/...`, `docs/...`, `build/...`, `test/...`.
 - **Conventional Commits in English**: `feat:`, `fix:`, `chore:`, `build:`, `docs:`, `test:`, `refactor:`.
