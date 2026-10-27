@@ -22,7 +22,7 @@ repositories {
 // Same Spring Boot BOM as the services, so every library resolves to the same version.
 dependencyManagement {
     imports {
-        mavenBom("org.springframework.boot:spring-boot-dependencies:4.1.1")
+        mavenBom("org.springframework.boot:spring-boot-dependencies:4.1.2")
     }
 }
 
