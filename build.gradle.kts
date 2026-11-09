@@ -1,7 +1,7 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 
 plugins {
-    id("com.diffplug.spotless") version "8.10.4" apply false
+    id("com.diffplug.spotless") version "8.11.0" apply false
 }
 
 allprojects {
